@@ -1,6 +1,26 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 
+//#define DEBUG
+//#define DEBUG_ERR
+
+#ifdef DEBUG
+#define DBG_MSG(msg) Serial.print(F("DBG: ")); Serial.println(msg);
+#define DBG_MSG_FMT(msg, fmt) Serial.print(F("DBG: ")); Serial.println(msg, fmt)
+#else
+#define DBG_MSG(msg)
+#define DBG_MSG_FMT(msg, fmt)
+#endif
+
+#ifdef DEBUG_ERR
+#define DBG_ERR(msg) Serial.print(F("ERR: ")); Serial.print(msg)
+#define DBG_ERR_FMT(msg, fmt) Serial.print(F("ERR: ")); Serial.print(msg, fmt)
+#else
+#define DBG_ERR(msg)
+#define DBG_ERR_FMT(msg, fmt)
+#endif
+
+
 // Remote key defination
 #define KEY_CH_MINUS 0xFFA25D
 #define KEY_CH 0xFF629D
@@ -33,21 +53,23 @@
 #define KEY_LAST 0xFFFFFFFF
 
 // Macro functions
-#define ARR_SIZE(arr) (sizeof(arr)/sizeof(arr[0]))
+#define ARY_LEN(ary) (sizeof(ary)/sizeof(ary[0]))
 
 // Pins defination
 #define BUZZER_PIN 9
 #define REMOTE_PIN 2
 #define LED_PIN 8
 
+// Morse data structure
+// Offset
 #define MTABLE_CHAR_OFFSET 0x20
-
+// Morse storage structure
 typedef struct {
   byte len;
   byte dat;
 } MorseCode;
-
-const PROGMEM MorseCode mTable[] = {
+// Morse data table
+const MorseCode mTable[] = {
   { 0, B00000000 },       // 0x20, SPACE
   { 0, B11111111 },       // 0x21, ! | 
   { 6, B01001000 },       // 0x22, " | ・－・・－・
@@ -112,12 +134,14 @@ const PROGMEM MorseCode mTable[] = {
 // Lcd defination
 LiquidCrystal lcd(12, 11, 7, 6, 5, 4);
 
-unsigned long duration = 80;
-unsigned int frequency = 1000;
+// sound last time ( = one dot time)
+volatile unsigned long g_duration = 80;
+// sound g_frequency
+volatile unsigned int g_frequency = 1000;
 
 // Remote control global variables
-volatile IRrecv irrecv(REMOTE_PIN);
-volatile decode_results results;
+volatile IRrecv g_irrecv(REMOTE_PIN);
+volatile decode_results g_results;
 
 void playTone(int freq, int dura) {
   digitalWrite(LED_PIN, HIGH);
@@ -127,28 +151,72 @@ void playTone(int freq, int dura) {
 }
 
 void playDot() {
-  playTone(frequency, duration);
-  delay(duration);
+  playTone(g_frequency, g_duration);
+  delay(g_duration);
 }
 
 void playDash() {
-  playTone(frequency, duration*3);
-  delay(duration);
+  playTone(g_frequency, g_duration*3);
+  delay(g_duration);
 }
 
 void playSep() {
-  delay(duration*2);
+  delay(g_duration*2);
 }
 
 void playWordSep() {
-  delay(duration*6);
+  delay(g_duration*6);
+}
+
+bool getBit(byte dat, byte i) {
+  return (bool)((0x01 << (7 - i)) & dat);
+}
+
+bool playChar(char ch) {
+  Serial.println(ch);
+  byte ic;  // index of mTable
+  // invalid char
+  if (ch < MTABLE_CHAR_OFFSET || ch >= MTABLE_CHAR_OFFSET + ARY_LEN(mTable)) {
+    DBG_ERR(F("playChar(): Invalid char!"));
+    DBG_ERR_FMT(ch, HEX);
+    return false;
+  }
+  ic = ch - MTABLE_CHAR_OFFSET;
+  
+  DBG_MSG(F("playChar(): mTable[ic].len"));
+  DBG_MSG(F("playChar(): mTable[ic].dat"));
+
+  // space
+  if (mTable[ic].len == 0 && mTable[ic].dat == 0) {
+    playWordSep();
+    return true;
+  }
+  // chars not in Morse
+  if (mTable[ic].len == 0 && mTable[ic].dat != 0) {
+    DBG_ERR(F("playChar(): Char not in Morse table!"));
+    DBG_ERR_FMT(ch, HEX);
+    return false;
+  }
+
+  // valid char
+  for (int i = 0; i < mTable[ic].len; ++i) {
+    if (getBit(mTable[ic].dat, i)) {
+      playDash();
+    }
+    else
+    {
+      playDot();
+    }
+  }
+  playSep();
+  return true;
 }
 
 void ir0_handler() {
-  //Serial.println("Enter Interrupt");
-  if (irrecv.decode(&results)) {
-    Serial.println(results.value, HEX);
-    irrecv.resume(); // Receive the next value
+  DBG_MSG(F("ir0_handler: Enter Interrupt"));
+  if (g_irrecv.decode(&g_results)) {
+    Serial.println(g_results.value, HEX);
+    g_irrecv.resume(); // Receive the next value
   }
 }
 
@@ -166,177 +234,26 @@ void setup() {
   lcd.cursor();
   lcd.blink();
   // Start the receiver
-  irrecv.blink13(true);
-  irrecv.enableIRIn(); 
+  g_irrecv.blink13(true);
+  g_irrecv.enableIRIn(); 
   attachInterrupt(0, ir0_handler, CHANGE);
 }
 
 void loop() {
-    playDash();
-    playDot();
-    playDash();
-    playDot();
-    playSep();
-    lcd.print("C");
+  char *pc = "CQ CQ CQ DE JJ1SLR JJ1SLR K";
+  byte len = strlen(pc);
+  char chr[2] = {0};
+  for (byte i = 0; i < len; ++i) {
+    playChar(pc[i]);
+    chr[0] = pc[i];
+    lcd.print(chr[0]);
+    if (i == 15) {
+      lcd.setCursor(0, 1);
+    }
+  }
+
+  delay(5000);
     
-    playDash();
-    playDash();
-    playDot();
-    playDash();
-    playSep();
-    lcd.print("Q");
-
-    playWordSep();
-    lcd.print(" ");
-
-    playDash();
-    playDot();
-    playDash();
-    playDot();
-    playSep();
-    lcd.print("C");
-    
-    playDash();
-    playDash();
-    playDot();
-    playDash();
-    playSep();
-    lcd.print("Q");
-
-    playWordSep();
-    lcd.print(" ");
-
-    playDash();
-    playDot();
-    playDash();
-    playDot();
-    playSep();
-    lcd.print("C");
-    
-    playDash();
-    playDash();
-    playDot();
-    playDash();
-    playSep();
-    lcd.print("Q");
-
-    playWordSep();
-    lcd.print(" ");
-    
-    playDash();
-    playDot();
-    playDot();
-    playSep();
-    lcd.print("D");
-    
-    playDot();
-    playSep();
-    lcd.print("E");
-
-    playWordSep();
-    lcd.print(" ");
-
-    lcd.setCursor(0, 1);
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("J");
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("J");
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("1");
-
-    playDot();
-    playDot();
-    playDot();
-    playSep();
-    lcd.print("S");
-
-    playDot();
-    playDash();
-    playDot();
-    playDot();
-    playSep();
-    lcd.print("L");
-
-    playDot();
-    playDash();
-    playDot();
-    playSep();
-    lcd.print("R"); 
-    
-
-    playWordSep();
-    lcd.print(" ");
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("J");
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("J");
-
-    playDot();
-    playDash();
-    playDash();
-    playDash();
-    playDash();
-    playSep();
-    lcd.print("1");
-
-    playDot();
-    playDot();
-    playDot();
-    playSep();
-    lcd.print("S");
-
-    playDot();
-    playDash();
-    playDot();
-    playDot();
-    playSep();
-    lcd.print("L");
-
-    playDot();
-    playDash();
-    playDot();
-    playSep();
-    lcd.print("R");
-
-    playWordSep();
-    lcd.print(" ");
-    
-    playDash();
-    playDot();
-    playDash();
-    playSep();
-    lcd.print("K");
-
-//    digitalWrite(LED_BUILTIN, LOW);
-    delay(5000);
-    
-//  }
   lcd.clear();
   lcd.setCursor(0, 0);
 }

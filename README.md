@@ -5,7 +5,7 @@ It's a Morse code listening practice device to play Morse code by a passive buzz
 
 The hardware is mainly constructed with the following parts:<br>
 An Ardoino UNO<br>
-An 1602A LCD display<br>
+An LCD display 1602A <br>
 An IR Receiver 1838<br>
 A passive buzzer<br>
 An LED<br>
