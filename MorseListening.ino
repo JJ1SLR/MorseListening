@@ -202,9 +202,7 @@ bool playChar(char ch) {
   for (int i = 0; i < mTable[ic].len; ++i) {
     if (getBit(mTable[ic].dat, i)) {
       playDash();
-    }
-    else
-    {
+    } else {
       playDot();
     }
   }
@@ -242,11 +240,9 @@ void setup() {
 void loop() {
   char *pc = "CQ CQ CQ DE JJ1SLR JJ1SLR K";
   byte len = strlen(pc);
-  char chr[2] = {0};
   for (byte i = 0; i < len; ++i) {
     playChar(pc[i]);
-    chr[0] = pc[i];
-    lcd.print(chr[0]);
+    lcd.write(pc[i]);
     if (i == 15) {
       lcd.setCursor(0, 1);
     }
