@@ -172,35 +172,47 @@ volatile unsigned long g_duration = DEFAULT_DURATION;
 // sound g_frequency
 #define DEFAULT_FREQUENCY 1000
 volatile unsigned int g_frequency = DEFAULT_FREQUENCY;
+#define DEFAULT_SEQ_DELAY 1000
+unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
 //------------------------------------------------------------------------------
 
 
 //******************************************************************************
 // Basic functions
 //******************************************************************************
+void delayWithChk(unsigned int mils) {
+  unsigned long startMillis = millis();
+  for (;;) {
+    eventChecker();
+    if(millis() - startMillis >= mils) {
+      break;
+    }
+  }
+}
+
 void playTone(int freq, int dura) {
   digitalWrite(LED_PIN, HIGH);
   tone(BUZZER_PIN, freq, dura);
-  delay(dura);
+  delayWithChk(dura);
   digitalWrite(LED_PIN, LOW);
 }
 
 void playDot() {
   playTone(g_frequency, g_duration);
-  delay(g_duration);
+  delayWithChk(g_duration);
 }
 
 void playDash() {
   playTone(g_frequency, g_duration*3);
-  delay(g_duration);
+  delayWithChk(g_duration);
 }
 
 void playSep() {
-  delay(g_duration*2);
+  delayWithChk(g_duration*2);
 }
 
 void playWordSep() {
-  delay(g_duration*6);
+  delayWithChk(g_duration*6);
 }
 
 bool getBit(byte dat, byte i) {
@@ -286,12 +298,63 @@ void playCQCallSign() {
     }
   }
 }
+
+void playSequence() {
+  g_lcd.noCursor();
+  g_lcd.noBlink();
+  // play A-Z
+  for (int i = 0x21; i < ARY_LEN(mTable); ++i) {
+    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
+      delayWithChk(g_seq_delay); 
+    }
+  }
+  // play 0-9
+  for (int i = 0x11; i < 0x1A; ++i) {
+    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
+      delayWithChk(g_seq_delay); 
+    }
+  }
+  playChar('0', true);
+  delayWithChk(g_seq_delay);
+  playChar('.', true);
+  delayWithChk(g_seq_delay);
+  playChar(',', true);
+  delayWithChk(g_seq_delay);
+  playChar(':', true);
+  delayWithChk(g_seq_delay);
+  playChar('?', true);
+  delayWithChk(g_seq_delay);
+  playChar('\'', true);
+  delayWithChk(g_seq_delay);
+  playChar('-', true);
+  delayWithChk(g_seq_delay);
+  playChar('(', true);
+  delayWithChk(g_seq_delay);
+  playChar(')', true);
+  delayWithChk(g_seq_delay);
+  playChar('/', true);
+  delayWithChk(g_seq_delay);
+  playChar('=', true);
+  delayWithChk(g_seq_delay);
+  playChar('+', true);
+  delayWithChk(g_seq_delay);
+  playChar('"', true);
+  delayWithChk(g_seq_delay);
+  playChar('X', true);
+  delayWithChk(g_seq_delay);
+  playChar('@', true);
+  delayWithChk(g_seq_delay);
+}
 //------------------------------------------------------------------------------
 
 
 //******************************************************************************
 // Public functions
 //******************************************************************************
+void eventChecker() {
+  
+}
+
 void ir0_handler() {
   DBG_MSG(F("ir0_handler: Enter Interrupt"));
   if (g_irrecv.decode(&g_results)) {
@@ -321,15 +384,9 @@ void setup() {
 
 void loop() {
   // playCQCallSign();
-  g_lcd.noCursor();
-  g_lcd.noBlink();
-  for (int i = 1; i < ARY_LEN(mTable); ++i) {
-    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
-      delay(1000); 
-    }
-  }
+  playSequence();
 
-  delay(5000);
+  delayWithChk(5000);
  
   g_lcd.clear();
   g_lcd.setCursor(0, 0);
