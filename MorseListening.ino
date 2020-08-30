@@ -172,8 +172,9 @@ volatile unsigned long g_duration = DEFAULT_DURATION;
 // sound g_frequency
 #define DEFAULT_FREQUENCY 1000
 volatile unsigned int g_frequency = DEFAULT_FREQUENCY;
+// delay time in the sequence play
 #define DEFAULT_SEQ_DELAY 1000
-unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
+volatile unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
 //------------------------------------------------------------------------------
 
 
@@ -299,15 +300,15 @@ void playCQCallSign() {
 void playSequence() {
   g_lcd.noCursor();
   g_lcd.noBlink();
-  // play A-Z
-  for (int i = 0x21; i < ARY_LEN(mTable); ++i) {
-    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
+  // play 'A'-'Z'
+  for (char c = 'A'; c <= 'Z'; ++c) {
+    if (playChar(c, true)) {
       delayWithChk(g_seq_delay); 
     }
   }
-  // play 0-9
-  for (int i = 0x11; i < 0x1A; ++i) {
-    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
+  // play '1'-'9'
+  for (char c = '1'; c <= '9'; ++c) {
+    if (playChar(c, true)) {
       delayWithChk(g_seq_delay); 
     }
   }
