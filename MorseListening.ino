@@ -60,6 +60,9 @@
 #define REMOTE_PIN 2
 #define LED_PIN 8
 
+// CONST STRINGS
+#define CQ_CALL_SIGN "CQ CQ CQ DE JJ1SLR JJ1SLR K"
+
 // Morse data structure
 // Offset
 #define MTABLE_CHAR_OFFSET 0x20
@@ -172,8 +175,8 @@ bool getBit(byte dat, byte i) {
   return (bool)((0x01 << (7 - i)) & dat);
 }
 
-bool playChar(char ch) {
-  Serial.println(ch);
+bool playChar(char ch, bool disp) {
+//  Serial.println(ch);
   byte ic;  // index of mTable
   // invalid char
   if (ch < MTABLE_CHAR_OFFSET || ch >= MTABLE_CHAR_OFFSET + ARY_LEN(mTable)) {
@@ -198,6 +201,25 @@ bool playChar(char ch) {
     return false;
   }
 
+  // display char on LCD
+  if (disp) {
+    // display char on row 0
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(F("Charactor: "));
+    lcd.write(ch);
+    // display Morse on row 1
+    lcd.setCursor(0, 1);
+    lcd.print(F("Morse: "));
+    for (int i = 0; i < mTable[ic].len; ++i) {
+      if (getBit(mTable[ic].dat, i)) {
+        lcd.write('-');
+      } else {
+        lcd.write('.');
+      }
+    }
+  }
+
   // valid char
   for (int i = 0; i < mTable[ic].len; ++i) {
     if (getBit(mTable[ic].dat, i)) {
@@ -208,6 +230,24 @@ bool playChar(char ch) {
   }
   playSep();
   return true;
+}
+
+bool playChar(char ch) {
+  return playChar(ch, false);
+}
+
+void playCQCallSign() {
+  lcd.cursor();
+  lcd.blink();
+  char *pc = CQ_CALL_SIGN;
+  byte len = strlen(pc);
+  for (byte i = 0; i < len; ++i) {
+    playChar(pc[i]);
+    lcd.write(pc[i]);
+    if (i == 15) {
+      lcd.setCursor(0, 1);
+    }
+  }
 }
 
 void ir0_handler() {
@@ -238,18 +278,18 @@ void setup() {
 }
 
 void loop() {
-  char *pc = "CQ CQ CQ DE JJ1SLR JJ1SLR K";
-  byte len = strlen(pc);
-  for (byte i = 0; i < len; ++i) {
-    playChar(pc[i]);
-    lcd.write(pc[i]);
-    if (i == 15) {
-      lcd.setCursor(0, 1);
+
+  // playCQCallSign();
+  lcd.noCursor();
+  lcd.noBlink();
+  for (int i = 1; i < ARY_LEN(mTable); ++i) {
+    if (playChar(i + MTABLE_CHAR_OFFSET, true)) {
+      delay(1000); 
     }
   }
 
   delay(5000);
-    
+ 
   lcd.clear();
   lcd.setCursor(0, 0);
 }
