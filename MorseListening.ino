@@ -182,11 +182,8 @@ unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
 //******************************************************************************
 void delayWithChk(unsigned int mils) {
   unsigned long startMillis = millis();
-  for (;;) {
+  while (millis() - startMillis < mils) {
     eventChecker();
-    if(millis() - startMillis >= mils) {
-      break;
-    }
   }
 }
 
