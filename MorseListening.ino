@@ -78,6 +78,8 @@ volatile decode_results g_results;
 #define DBG_ERR(msg)
 #define DBG_ERR_FMT(msg, fmt)
 #endif
+
+#define IRQ  // just for comment
 //------------------------------------------------------------------------------
 
 
@@ -172,6 +174,8 @@ volatile unsigned int g_frequency = DEFAULT_FREQUENCY;
 // delay time in the sequence play
 #define DEFAULT_SEQ_DELAY 1000
 volatile unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
+// Current remote key function pointer
+volatile void (*key_func)() = NULL;
 //------------------------------------------------------------------------------
 
 
@@ -230,6 +234,9 @@ byte getLen(byte dat) {
 //******************************************************************************
 // Module functions
 //******************************************************************************
+//*******************************
+// Play sound and display on lcd
+//*******************************
 bool playChar(char ch, bool disp) {
 //  Serial.println(ch);
   byte ic;  // index of mTable
@@ -310,6 +317,7 @@ void playSequence() {
   // play 'A'-'Z'
   for (char c = 'A'; c <= 'Z'; ++c) {
     if (playChar(c, true)) {
+      playWordSep();
       delayWithChk(g_seq_delay); 
     }
   }
@@ -350,6 +358,104 @@ void playSequence() {
   playChar('@', true);
   delayWithChk(g_seq_delay);
 }
+
+//*******************************
+// Remote key handling
+//*******************************
+
+void on_key_plus() {
+  if (g_frequency < 2000) {
+    g_frequency += 100;
+  }
+}
+
+void on_key_minus() {
+  if (g_frequency > 500) {
+    g_frequency -= 100;
+  }
+}
+
+void on_key_eq() {
+  g_frequency = DEFAULT_FREQUENCY;
+}
+
+
+void on_key_next() {
+  if (g_duration > 40) {
+    g_duration -= 5;
+  }
+}
+
+void on_key_prev() {
+  if (g_duration < 120) {
+    g_duration += 5;
+  }
+}
+
+void on_key_play() {
+  g_duration = DEFAULT_DURATION;
+}
+
+
+void on_key_ch_plus() {
+  if (g_seq_delay >= 100) {
+    g_seq_delay -= 100;
+  }
+}
+
+void on_key_ch_minus() {
+  if (g_seq_delay < 2000) {
+    g_seq_delay += 100;
+  }
+}
+
+void on_key_ch() {
+  g_seq_delay = DEFAULT_SEQ_DELAY;
+}
+
+
+void IRQ on_key_received(decode_results *results) {
+  switch (results->value) {
+  case KEY_PLUS:
+    key_func = on_key_plus;
+    break;
+  case KEY_MINUS:
+    key_func = on_key_minus;
+    break;
+  case KEY_EQ:
+    key_func = on_key_eq;
+    break;
+    
+  case KEY_NEXT:
+    key_func = on_key_next;
+    break;
+  case KEY_PREV:
+    key_func = on_key_prev;
+    break;
+  case KEY_PLAY:
+    key_func = on_key_play;
+    break;
+
+  case KEY_CH_PLUS:
+    key_func = on_key_ch_plus;
+    break;
+  case KEY_CH_MINUS:
+    key_func = on_key_ch_minus;
+    break;
+  case KEY_CH:
+    key_func = on_key_ch;
+    break;
+    
+  case KEY_LAST:
+    break;
+  default:
+    key_func = NULL;
+    break;
+  }
+  if (key_func != NULL) {
+    key_func();
+  }
+}
 //------------------------------------------------------------------------------
 
 
@@ -360,10 +466,10 @@ void eventChecker() {
   
 }
 
-void ir0_handler() {
+void IRQ ir0_handler() {
   DBG_MSG(F("ir0_handler: Enter Interrupt"));
   if (g_irrecv.decode(&g_results)) {
-    Serial.println(g_results.value, HEX);
+    on_key_received(&g_results);
     g_irrecv.resume(); // Receive the next value
   }
 }
