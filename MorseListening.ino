@@ -316,46 +316,60 @@ void playSequence() {
   g_lcd.noBlink();
   // play 'A'-'Z'
   for (char c = 'A'; c <= 'Z'; ++c) {
-    if (playChar(c, true)) {
-      playWordSep();
-      delayWithChk(g_seq_delay); 
-    }
+    playChar(c, true);
+    playWordSep();
+    delayWithChk(g_seq_delay); 
   }
   // play '1'-'9'
   for (char c = '1'; c <= '9'; ++c) {
-    if (playChar(c, true)) {
-      delayWithChk(g_seq_delay); 
-    }
+    playChar(c, true);
+    playWordSep();
+    delayWithChk(g_seq_delay); 
   }
   playChar('0', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('.', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar(',', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar(':', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('?', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('\'', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('-', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('(', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar(')', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('/', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('=', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('+', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('"', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('X', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
   playChar('@', true);
+  playWordSep();
   delayWithChk(g_seq_delay);
 }
 
