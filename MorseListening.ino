@@ -1,6 +1,6 @@
 #include <LiquidCrystal.h>
 #include <IRremote.h>
-
+#include <setjmp.h>
 
 //******************************************************************************
 // Hardware Defination
@@ -165,6 +165,8 @@ const byte mTable[] = {
 //******************************************************************************
 // Global variables
 //******************************************************************************
+// jump buffer for longjmp
+jmp_buf g_jmpBuf;
 // sound last time ( = one dot time)
 #define DEFAULT_DURATION 80
 volatile unsigned long g_duration = DEFAULT_DURATION;
@@ -173,9 +175,19 @@ volatile unsigned long g_duration = DEFAULT_DURATION;
 volatile unsigned int g_frequency = DEFAULT_FREQUENCY;
 // delay time in the sequence play
 #define DEFAULT_SEQ_DELAY 1000
-volatile unsigned int g_seq_delay = DEFAULT_SEQ_DELAY;
-// Current remote key function pointer
-volatile void (*key_func)() = NULL;
+volatile unsigned int g_seqDelay = DEFAULT_SEQ_DELAY;
+// current remote key function pointer
+volatile void (*keyFunc)() = NULL;
+// run status
+enum RunStatus {
+  RS_READY = 0,        // do nothing
+  RS_SEQUENCE = 1,     // play the morse code on sequence
+  RS_RANDOM = 2,       // play the morse code randomly
+  RS_CALLSIGN = 9,     // play my callsign JJ1SLR
+};
+volatile RunStatus g_runStatus = RS_READY;
+// run status changed flag
+volatile bool g_bRunStatusChanged = false;
 //------------------------------------------------------------------------------
 
 
@@ -300,6 +312,8 @@ bool playChar(char ch) {
 void playCQCallSign() {
   g_lcd.cursor();
   g_lcd.blink();
+  g_lcd.clear();
+  g_lcd.setCursor(0, 0);
   char *pc = CQ_CALL_SIGN;
   byte len = strlen(pc);
   for (byte i = 0; i < len; ++i) {
@@ -314,160 +328,205 @@ void playCQCallSign() {
 void playSequence() {
   g_lcd.noCursor();
   g_lcd.noBlink();
+  g_lcd.clear();
+  g_lcd.setCursor(0, 0);
   // play 'A'-'Z'
   for (char c = 'A'; c <= 'Z'; ++c) {
     playChar(c, true);
     playWordSep();
-    delayWithChk(g_seq_delay); 
+    delayWithChk(g_seqDelay); 
   }
   // play '1'-'9'
   for (char c = '1'; c <= '9'; ++c) {
     playChar(c, true);
     playWordSep();
-    delayWithChk(g_seq_delay); 
+    delayWithChk(g_seqDelay); 
   }
   playChar('0', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('.', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar(',', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar(':', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('?', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('\'', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('-', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('(', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar(')', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('/', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('=', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('+', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('"', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('X', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
   playChar('@', true);
   playWordSep();
-  delayWithChk(g_seq_delay);
+  delayWithChk(g_seqDelay);
+}
+
+void playReady() {
+  g_lcd.noCursor();
+  g_lcd.noBlink();
+  g_lcd.clear();
+  g_lcd.setCursor(0, 0);
+  g_lcd.print(F("Ready."));
+}
+
+void playRandom() {
+
 }
 
 //*******************************
 // Remote key handling
 //*******************************
 
-void on_key_plus() {
+void IRQ onKeyPlus() {
   if (g_frequency < 2000) {
     g_frequency += 100;
   }
 }
 
-void on_key_minus() {
+void IRQ onKeyMinus() {
   if (g_frequency > 500) {
     g_frequency -= 100;
   }
 }
 
-void on_key_eq() {
+void IRQ onKeyEq() {
   g_frequency = DEFAULT_FREQUENCY;
 }
 
 
-void on_key_next() {
+void IRQ onKeyNext() {
   if (g_duration > 40) {
     g_duration -= 5;
   }
 }
 
-void on_key_prev() {
+void IRQ onKeyPrev() {
   if (g_duration < 120) {
     g_duration += 5;
   }
 }
 
-void on_key_play() {
+void IRQ onKeyPlay() {
   g_duration = DEFAULT_DURATION;
 }
 
 
-void on_key_ch_plus() {
-  if (g_seq_delay >= 100) {
-    g_seq_delay -= 100;
+void IRQ onKeyChPlus() {
+  if (g_seqDelay >= 100) {
+    g_seqDelay -= 100;
   }
 }
 
-void on_key_ch_minus() {
-  if (g_seq_delay < 2000) {
-    g_seq_delay += 100;
+void IRQ onKeyChMinus() {
+  if (g_seqDelay < 2000) {
+    g_seqDelay += 100;
   }
 }
 
-void on_key_ch() {
-  g_seq_delay = DEFAULT_SEQ_DELAY;
+void IRQ onKeyCh() {
+  g_seqDelay = DEFAULT_SEQ_DELAY;
 }
 
+void IRQ onKey0() {
+  g_runStatus = RS_READY;
+  g_bRunStatusChanged = true;
+}
 
-void IRQ on_key_received(decode_results *results) {
+void IRQ onKey1() {
+  g_runStatus = RS_SEQUENCE;
+  g_bRunStatusChanged = true;
+}
+
+void IRQ onKey2() {
+  g_runStatus = RS_RANDOM;
+  g_bRunStatusChanged = true;
+}
+
+void IRQ onKey9() {
+  g_runStatus = RS_CALLSIGN;
+  g_bRunStatusChanged = true;
+}
+
+void IRQ onKeyReceived(decode_results *results) {
   switch (results->value) {
   case KEY_PLUS:
-    key_func = on_key_plus;
+    keyFunc = onKeyPlus;
     break;
   case KEY_MINUS:
-    key_func = on_key_minus;
+    keyFunc = onKeyMinus;
     break;
   case KEY_EQ:
-    key_func = on_key_eq;
+    keyFunc = onKeyEq;
     break;
     
   case KEY_NEXT:
-    key_func = on_key_next;
+    keyFunc = onKeyNext;
     break;
   case KEY_PREV:
-    key_func = on_key_prev;
+    keyFunc = onKeyPrev;
     break;
   case KEY_PLAY:
-    key_func = on_key_play;
+    keyFunc = onKeyPlay;
     break;
 
   case KEY_CH_PLUS:
-    key_func = on_key_ch_plus;
+    keyFunc = onKeyChPlus;
     break;
   case KEY_CH_MINUS:
-    key_func = on_key_ch_minus;
+    keyFunc = onKeyChMinus;
     break;
   case KEY_CH:
-    key_func = on_key_ch;
+    keyFunc = onKeyCh;
     break;
-    
+
+  case KEY_0:
+    keyFunc = onKey0;
+    break;
+  case KEY_1:
+    keyFunc = onKey1;
+    break;
+  case KEY_2:
+    keyFunc = onKey2;
+    break;
+  case KEY_9:
+    keyFunc = onKey9;
+    break;
   case KEY_LAST:
     break;
   default:
-    key_func = NULL;
+    keyFunc = NULL;
     break;
   }
-  if (key_func != NULL) {
-    key_func();
+  if (keyFunc != NULL) {
+    keyFunc();
   }
 }
 //------------------------------------------------------------------------------
@@ -477,19 +536,23 @@ void IRQ on_key_received(decode_results *results) {
 // Public functions
 //******************************************************************************
 void eventChecker() {
-  
+  if (g_bRunStatusChanged) {
+    DBG_MSG("eventChecker: status changed");
+    g_bRunStatusChanged = false;
+    longjmp(g_jmpBuf, 1);
+  }
 }
 
 void IRQ ir0_handler() {
-  DBG_MSG(F("ir0_handler: Enter Interrupt"));
+//  DBG_MSG(F("ir0_handler: Enter Interrupt"));
   if (g_irrecv.decode(&g_results)) {
-    on_key_received(&g_results);
+    onKeyReceived(&g_results);
     g_irrecv.resume(); // Receive the next value
   }
 }
 
 void setup() {
-  // Start Serial output
+  // start serial output
   Serial.begin(9600);
   // initialize digital pin LED_BUILTIN
   pinMode(LED_BUILTIN, OUTPUT);
@@ -508,11 +571,25 @@ void setup() {
 }
 
 void loop() {
-  // playCQCallSign();
-  playSequence();
-
-  delayWithChk(5000);
- 
-  g_lcd.clear();
-  g_lcd.setCursor(0, 0);
+  setjmp(g_jmpBuf);
+  switch (g_runStatus) {
+  case RS_READY:
+    playReady();
+    break;
+  case RS_SEQUENCE:
+    playSequence();
+    break;
+  case RS_RANDOM:
+    playRandom();
+    break;
+  case RS_CALLSIGN:
+    playCQCallSign();
+    break;
+  default:
+    break;
+  }
+  // wait for remote control input
+  for (;;) {
+    delayWithChk(1);
+  }
 }
