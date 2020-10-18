@@ -284,7 +284,7 @@ bool playChar(char ch, bool disp) {
     // display Morse on row 1
     g_lcd.setCursor(0, 1);
     g_lcd.print(F("Morse: "));
-    for (int i = 0; i < len; ++i) {
+    for (byte i = 0; i < len; ++i) {
       if (getBit(mTable[ic], i)) {
         g_lcd.write('-');
       } else {
@@ -294,7 +294,7 @@ bool playChar(char ch, bool disp) {
   }
 
   // valid char
-  for (int i = 0; i < len; ++i) {
+  for (byte i = 0; i < len; ++i) {
     if (getBit(mTable[ic], i)) {
       playDash();
     } else {
@@ -317,11 +317,11 @@ void playCQCallSign() {
   char *pc = CQ_CALL_SIGN;
   byte len = strlen(pc);
   for (byte i = 0; i < len; ++i) {
-    playChar(pc[i]);
     g_lcd.write(pc[i]);
     if (i == LCD_COLS - 1) {
       g_lcd.setCursor(0, 1);
     }
+    playChar(pc[i]);
   }
 }
 
@@ -398,7 +398,32 @@ void playReady() {
 }
 
 void playRandom() {
-
+  // Cread random seed
+  randomSeed(analogRead(A0));
+  // Clear lcd
+  g_lcd.cursor();
+  g_lcd.blink();
+  g_lcd.clear();
+  // play random chars until the LCD is full
+  for (byte i = 0; i < LCD_ROWS; ++i) {
+    // Set cursor position
+    g_lcd.setCursor(0, i);
+    for (byte j = 0; j < LCD_COLS; ++j) {
+      byte ic = random(ARY_LEN(mTable));  // create a random index
+      char ch = ic + MTABLE_CHAR_OFFSET;  // calculate the charactor
+      // treat space or invalid charactor as word separator
+      if (M_SPACE == mTable[ic] || M_INVLD == mTable[ic]) {
+        playWordSep();
+        // display a space on the LCD
+        g_lcd.write(' ');
+        continue;
+      }
+      // play the charactor
+      playChar(ch);
+      // display it on the LCD
+      g_lcd.write(ch);
+    }
+  }
 }
 
 //*******************************
@@ -567,6 +592,7 @@ void setup() {
   // Start the receiver
   g_irrecv.blink13(true);
   g_irrecv.enableIRIn(); 
+  // Attatch interrupt
   attachInterrupt(0, ir0_handler, CHANGE);
 }
 
