@@ -13,11 +13,11 @@ LiquidCrystal g_lcd(12, 11, 7, 6, 5, 4);
 #define LCD_COLS 16
 #define LCD_ROWS 2
 
-// Remote control global variables
+// remote control global variables
 volatile IRrecv g_irrecv(2);
 volatile decode_results g_results;
 
-// Remote key defination
+// remote key defination
 #define KEY_CH_MINUS 0xFFA25D
 #define KEY_CH 0xFF629D
 #define KEY_CH_PLUS 0xFFE21D
@@ -86,23 +86,23 @@ volatile decode_results g_results;
 //******************************************************************************
 // Morse data structure
 //******************************************************************************
-// Offset
+// offset
 #define MTABLE_CHAR_OFFSET 0x20
 #define M_SPACE 0x00
 #define M_INVLD 0x80
-// Morse data table
+// morse data table
 const byte mTable[] = {
   M_SPACE,      // 0x20, SPACE
-  M_INVLD,      // 0x21, ! | 
+  M_INVLD,      // 0x21, ! |
   B01001010,    // 0x22, " | ・－・・－・
-  M_INVLD,      // 0x23, # | 
-  M_INVLD,      // 0x24, $ | 
-  M_INVLD,      // 0x25, % | 
-  M_INVLD,      // 0x26, & | 
+  M_INVLD,      // 0x23, # |
+  M_INVLD,      // 0x24, $ |
+  M_INVLD,      // 0x25, % |
+  M_INVLD,      // 0x26, & |
   B01111010,    // 0x27, ' | ・－－－－・
   B10110100,    // 0x28, ( | －・－－・
   B10110110,    // 0x29, ) | －・－－・－
-  M_INVLD,      // 0x2A, * | 
+  M_INVLD,      // 0x2A, * |
   B01010100,    // 0x2B, + | ・－・－・
   B11001110,    // 0x2C, , | －－・・－－
   B10000110,    // 0x2D, - | －・・・・－
@@ -119,10 +119,10 @@ const byte mTable[] = {
   B11100100,    // 0x38, 8 | －－－・・
   B11110100,    // 0x39, 9 | －－－－・
   B11100010,    // 0x3A, : | －－－・・・
-  M_INVLD,      // 0x3B, ; | 
-  M_INVLD,      // 0x3C, < | 
+  M_INVLD,      // 0x3B, ; |
+  M_INVLD,      // 0x3C, < |
   B10001100,    // 0x3D, = | －・・・－
-  M_INVLD,      // 0x3E, > | 
+  M_INVLD,      // 0x3E, > |
   B00110010,    // 0x3F, ? | ・・－－・・
   B01101010,    // 0x40, @ | ・－－・－・
   B01100000,    // 0x41, A | ・－
@@ -156,9 +156,33 @@ const byte mTable[] = {
 
 
 //******************************************************************************
-// Macro functions
+// Macros
 //******************************************************************************
+// default sound last time ( = one dot time)
+#define DEFAULT_DURATION 80
+// default sound frequency
+#define DEFAULT_FREQUENCY 1000
+// default delay time in the sequence play
+#define DEFAULT_SEQ_DELAY 1000
+// array length macro function
 #define ARY_LEN(ary) (sizeof(ary)/sizeof(ary[0]))
+//------------------------------------------------------------------------------
+
+
+//******************************************************************************
+// Data types
+//******************************************************************************
+// run status
+enum RunStatus {
+  RS_READY = 0,                   // do nothing
+  RS_SEQUENCE = 1,                // play the morse code on sequence
+  RS_RANDOM_ALL = 2,              // play the morse code randomly
+  RS_RANDOM_ALPHA_NUM = 3,        // (only include alphabet and number)
+  RS_RANDOM_ALPHA_ONLY = 4,       // (only include alphabet
+  RS_CALLSIGN = 9,     // play my callsign JJ1SLR
+};
+// rundom number creator function pointer type defination
+typedef byte (*RandomFuncPtr)();
 //------------------------------------------------------------------------------
 
 
@@ -168,23 +192,14 @@ const byte mTable[] = {
 // jump buffer for longjmp
 jmp_buf g_jmpBuf;
 // sound last time ( = one dot time)
-#define DEFAULT_DURATION 80
 volatile unsigned long g_duration = DEFAULT_DURATION;
-// sound g_frequency
-#define DEFAULT_FREQUENCY 1000
+// sound frequency
 volatile unsigned int g_frequency = DEFAULT_FREQUENCY;
 // delay time in the sequence play
-#define DEFAULT_SEQ_DELAY 1000
 volatile unsigned int g_seqDelay = DEFAULT_SEQ_DELAY;
 // current remote key function pointer
 volatile void (*keyFunc)() = NULL;
-// run status
-enum RunStatus {
-  RS_READY = 0,        // do nothing
-  RS_SEQUENCE = 1,     // play the morse code on sequence
-  RS_RANDOM = 2,       // play the morse code randomly
-  RS_CALLSIGN = 9,     // play my callsign JJ1SLR
-};
+// current run status
 volatile RunStatus g_runStatus = RS_READY;
 // run status changed flag
 volatile bool g_bRunStatusChanged = false;
@@ -214,16 +229,16 @@ void playDot() {
 }
 
 void playDash() {
-  playTone(g_frequency, g_duration*3);
+  playTone(g_frequency, g_duration * 3);
   delayWithChk(g_duration);
 }
 
 void playSep() {
-  delayWithChk(g_duration*2);
+  delayWithChk(g_duration * 2);
 }
 
 void playWordSep() {
-  delayWithChk(g_duration*6);
+  delayWithChk(g_duration * 6);
 }
 
 bool getBit(byte dat, byte i) {
@@ -250,7 +265,7 @@ byte getLen(byte dat) {
 // Play sound and display on lcd
 //*******************************
 bool playChar(char ch, bool disp) {
-//  Serial.println(ch);
+  //  Serial.println(ch);
   byte ic;  // index of mTable
   // invalid char
   if (ch < MTABLE_CHAR_OFFSET || ch >= MTABLE_CHAR_OFFSET + ARY_LEN(mTable)) {
@@ -334,13 +349,13 @@ void playSequence() {
   for (char c = 'A'; c <= 'Z'; ++c) {
     playChar(c, true);
     playWordSep();
-    delayWithChk(g_seqDelay); 
+    delayWithChk(g_seqDelay);
   }
   // play '1'-'9'
   for (char c = '1'; c <= '9'; ++c) {
     playChar(c, true);
     playWordSep();
-    delayWithChk(g_seqDelay); 
+    delayWithChk(g_seqDelay);
   }
   playChar('0', true);
   playWordSep();
@@ -397,7 +412,7 @@ void playReady() {
   g_lcd.print(F("Ready."));
 }
 
-void playRandom() {
+void playRandom(RandomFuncPtr randomFunc) {
   // Cread random seed
   randomSeed(analogRead(A0));
   // Clear lcd
@@ -409,7 +424,7 @@ void playRandom() {
     // Set cursor position
     g_lcd.setCursor(0, i);
     for (byte j = 0; j < LCD_COLS; ++j) {
-      byte ic = random(ARY_LEN(mTable));  // create a random index
+      byte ic = randomFunc();
       char ch = ic + MTABLE_CHAR_OFFSET;  // calculate the charactor
       // treat space or invalid charactor as word separator
       if (M_SPACE == mTable[ic] || M_INVLD == mTable[ic]) {
@@ -491,7 +506,17 @@ void IRQ onKey1() {
 }
 
 void IRQ onKey2() {
-  g_runStatus = RS_RANDOM;
+  g_runStatus = RS_RANDOM_ALL;
+  g_bRunStatusChanged = true;
+}
+
+void IRQ onKey3() {
+  g_runStatus = RS_RANDOM_ALPHA_NUM;
+  g_bRunStatusChanged = true;
+}
+
+void IRQ onKey4() {
+  g_runStatus = RS_RANDOM_ALPHA_ONLY;
   g_bRunStatusChanged = true;
 }
 
@@ -502,64 +527,66 @@ void IRQ onKey9() {
 
 void IRQ onKeyReceived(decode_results *results) {
   switch (results->value) {
-  case KEY_PLUS:
-    keyFunc = onKeyPlus;
-    break;
-  case KEY_MINUS:
-    keyFunc = onKeyMinus;
-    break;
-  case KEY_EQ:
-    keyFunc = onKeyEq;
-    break;
-    
-  case KEY_NEXT:
-    keyFunc = onKeyNext;
-    break;
-  case KEY_PREV:
-    keyFunc = onKeyPrev;
-    break;
-  case KEY_PLAY:
-    keyFunc = onKeyPlay;
-    break;
+    case KEY_PLUS:
+      keyFunc = onKeyPlus;
+      break;
+    case KEY_MINUS:
+      keyFunc = onKeyMinus;
+      break;
+    case KEY_EQ:
+      keyFunc = onKeyEq;
+      break;
 
-  case KEY_CH_PLUS:
-    keyFunc = onKeyChPlus;
-    break;
-  case KEY_CH_MINUS:
-    keyFunc = onKeyChMinus;
-    break;
-  case KEY_CH:
-    keyFunc = onKeyCh;
-    break;
+    case KEY_NEXT:
+      keyFunc = onKeyNext;
+      break;
+    case KEY_PREV:
+      keyFunc = onKeyPrev;
+      break;
+    case KEY_PLAY:
+      keyFunc = onKeyPlay;
+      break;
 
-  case KEY_0:
-    keyFunc = onKey0;
-    break;
-  case KEY_1:
-    keyFunc = onKey1;
-    break;
-  case KEY_2:
-    keyFunc = onKey2;
-    break;
-  case KEY_9:
-    keyFunc = onKey9;
-    break;
-  case KEY_LAST:
-    break;
-  default:
-    keyFunc = NULL;
-    break;
+    case KEY_CH_PLUS:
+      keyFunc = onKeyChPlus;
+      break;
+    case KEY_CH_MINUS:
+      keyFunc = onKeyChMinus;
+      break;
+    case KEY_CH:
+      keyFunc = onKeyCh;
+      break;
+
+    case KEY_0:
+      keyFunc = onKey0;
+      break;
+    case KEY_1:
+      keyFunc = onKey1;
+      break;
+    case KEY_2:
+      keyFunc = onKey2;
+      break;
+    case KEY_3:
+      keyFunc = onKey3;
+      break;
+    case KEY_4:
+      keyFunc = onKey4;
+      break;
+    case KEY_9:
+      keyFunc = onKey9;
+      break;
+
+    case KEY_LAST:
+      break;
+    default:
+      keyFunc = NULL;
+      break;
   }
   if (keyFunc != NULL) {
     keyFunc();
   }
 }
-//------------------------------------------------------------------------------
 
-
-//******************************************************************************
-// Public functions
-//******************************************************************************
 void eventChecker() {
   if (g_bRunStatusChanged) {
     DBG_MSG("eventChecker: status changed");
@@ -568,8 +595,18 @@ void eventChecker() {
   }
 }
 
+byte randomFuncAll() {
+  return random(ARY_LEN(mTable));  // create a random index
+}
+//------------------------------------------------------------------------------
+
+
+//******************************************************************************
+// Public functions
+//******************************************************************************
+
 void IRQ ir0_handler() {
-//  DBG_MSG(F("ir0_handler: Enter Interrupt"));
+  //  DBG_MSG(F("ir0_handler: Enter Interrupt"));
   if (g_irrecv.decode(&g_results)) {
     onKeyReceived(&g_results);
     g_irrecv.resume(); // Receive the next value
@@ -591,7 +628,7 @@ void setup() {
   g_lcd.blink();
   // Start the receiver
   g_irrecv.blink13(true);
-  g_irrecv.enableIRIn(); 
+  g_irrecv.enableIRIn();
   // Attatch interrupt
   attachInterrupt(0, ir0_handler, CHANGE);
 }
@@ -599,23 +636,30 @@ void setup() {
 void loop() {
   setjmp(g_jmpBuf);
   switch (g_runStatus) {
-  case RS_READY:
-    playReady();
-    break;
-  case RS_SEQUENCE:
-    playSequence();
-    break;
-  case RS_RANDOM:
-    playRandom();
-    break;
-  case RS_CALLSIGN:
-    playCQCallSign();
-    break;
-  default:
-    break;
+    case RS_READY:
+      playReady();
+      break;
+    case RS_SEQUENCE:
+      playSequence();
+      break;
+    case RS_RANDOM_ALL:
+      playRandom(randomFuncAll);
+      break;
+    case RS_RANDOM_ALPHA_NUM:
+      playRandom(randomFuncAll);
+      break;
+    case RS_RANDOM_ALPHA_ONLY:
+      playRandom(randomFuncAll);
+      break;
+    case RS_CALLSIGN:
+      playCQCallSign();
+      break;
+    default:
+      break;
   }
   // wait for remote control input
   for (;;) {
     delayWithChk(1);
   }
 }
+//------------------------------------------------------------------------------
