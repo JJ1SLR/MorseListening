@@ -18,35 +18,35 @@ volatile IRrecv g_irrecv(2);
 volatile decode_results g_results;
 
 // remote key defination
-#define KEY_CH_MINUS 0xFFA25D
-#define KEY_CH 0xFF629D
-#define KEY_CH_PLUS 0xFFE21D
+#define KEY_CH_MINUS  0xFFA25D
+#define KEY_CH        0xFF629D
+#define KEY_CH_PLUS   0xFFE21D
 
-#define KEY_PREV 0xFF22DD
-#define KEY_NEXT 0xFF02FD
-#define KEY_PLAY 0xFFC23D
+#define KEY_PREV      0xFF22DD
+#define KEY_NEXT      0xFF02FD
+#define KEY_PLAY      0xFFC23D
 
-#define KEY_MINUS 0xFFE01F
-#define KEY_PLUS 0xFFA857
-#define KEY_EQ 0xFF906F
+#define KEY_MINUS     0xFFE01F
+#define KEY_PLUS      0xFFA857
+#define KEY_EQ        0xFF906F
 
-#define KEY_0 0xFF6897
-#define KEY_100 0xFF9867
-#define KEY_200 0xFFB04F
+#define KEY_0         0xFF6897
+#define KEY_100       0xFF9867
+#define KEY_200       0xFFB04F
 
-#define KEY_1 0xFF30CF
-#define KEY_2 0xFF18E7
-#define KEY_3 0xFF7A85
+#define KEY_1         0xFF30CF
+#define KEY_2         0xFF18E7
+#define KEY_3         0xFF7A85
 
-#define KEY_4 0xFF10EF
-#define KEY_5 0xFF38C7
-#define KEY_6 0xFF5AA5
+#define KEY_4         0xFF10EF
+#define KEY_5         0xFF38C7
+#define KEY_6         0xFF5AA5
 
-#define KEY_7 0xFF42BD
-#define KEY_8 0xFF4AB5
-#define KEY_9 0xFF52AD
+#define KEY_7         0xFF42BD
+#define KEY_8         0xFF4AB5
+#define KEY_9         0xFF52AD
 
-#define KEY_LAST 0xFFFFFFFF
+#define KEY_LAST      0xFFFFFFFF
 //------------------------------------------------------------------------------
 
 
@@ -87,9 +87,9 @@ volatile decode_results g_results;
 // Morse data structure
 //******************************************************************************
 // offset
-#define MTABLE_CHAR_OFFSET 0x20
-#define M_SPACE 0x00
-#define M_INVLD 0x80
+#define MTABLE_CHAR_OFFSET  0x20
+#define M_SPACE             0x00
+#define M_INVLD             0x80
 // morse data table
 const byte mTable[] = {
   M_SPACE,      // 0x20, SPACE
@@ -179,7 +179,7 @@ enum RunStatus {
   RS_RANDOM_ALL = 2,              // play the morse code randomly
   RS_RANDOM_ALPHA_NUM = 3,        // (only include alphabet and number)
   RS_RANDOM_ALPHA_ONLY = 4,       // (only include alphabet
-  RS_CALLSIGN = 9,     // play my callsign JJ1SLR
+  RS_CALLSIGN = 9,                // play my callsign JJ1SLR
 };
 // rundom number creator function pointer type defination
 typedef byte (*RandomFuncPtr)();
