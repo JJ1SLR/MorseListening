@@ -598,6 +598,34 @@ void eventChecker() {
 byte randomFuncAll() {
   return random(ARY_LEN(mTable));  // create a random index
 }
+
+byte randomFuncAlphaNum() {
+  byte idx = 0;  // index
+  byte num = random(37);  // create a random number (0 ~ 36)
+  if (0 < num && num <= 0x0A) {
+    // the index of '0' is 0x10. 
+    // e.g. when num is 1, idx will be 0x10
+    idx = num + 0x0F;  
+  } else if (num > 0x0A) {
+    // the index of 'A' is 0x21.
+    // e.g. when num is 11, idx will be 0x21
+    //      when num is 36, idx will be 0x3A
+    idx = num + 0x16;  
+  }
+  return idx;
+}
+
+byte randomFuncAlphaOnly() {
+  byte idx = 0;  // index
+  byte num = random(27);  // create a random number (0 ~ 26)
+  if (num > 0) {
+    // the index of 'A' is 0x21.
+    // e.g. when num is 1, idx will be 0x21
+    //      when num is 26, idx will be 0x3A
+    idx = num + 0x20;  
+  }
+  return idx;
+}
 //------------------------------------------------------------------------------
 
 
@@ -646,10 +674,10 @@ void loop() {
       playRandom(randomFuncAll);
       break;
     case RS_RANDOM_ALPHA_NUM:
-      playRandom(randomFuncAll);
+      playRandom(randomFuncAlphaNum);
       break;
     case RS_RANDOM_ALPHA_ONLY:
-      playRandom(randomFuncAll);
+      playRandom(randomFuncAlphaOnly);
       break;
     case RS_CALLSIGN:
       playCQCallSign();
