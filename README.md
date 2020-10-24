@@ -11,6 +11,9 @@ A passive buzzer<br>
 An LED<br>
 some resistors, etc.<br>
 
+Circuit diagram<br>
+![circuit diagram](https://github.com/JJ1SLR/MorseListening/blob/master/Document/circuit.JPG?raw=true)<br>
+
 The morse code here is stipulated by the Japanese law [無線局運用規則　別表第一号　モールス符号（第十二条関係）]
 (https://www.tele.soumu.go.jp/horei/reiki_honbun/72393000001.html)<br>
 But the Wabun code is not supported.
