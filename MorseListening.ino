@@ -64,7 +64,7 @@ volatile decode_results g_results;
 //#define DEBUG_ERR
 
 #ifdef DEBUG
-#define DBG_MSG(msg) Serial.print(F("DBG: ")); Serial.println(msg);
+#define DBG_MSG(msg) Serial.print(F("DBG: ")); Serial.println(msg)
 #define DBG_MSG_FMT(msg, fmt) Serial.print(F("DBG: ")); Serial.println(msg, fmt)
 #else
 #define DBG_MSG(msg)
@@ -72,8 +72,8 @@ volatile decode_results g_results;
 #endif
 
 #ifdef DEBUG_ERR
-#define DBG_ERR(msg) Serial.print(F("ERR: ")); Serial.print(msg)
-#define DBG_ERR_FMT(msg, fmt) Serial.print(F("ERR: ")); Serial.print(msg, fmt)
+#define DBG_ERR(msg) Serial.print(F("ERR: ")); Serial.println(msg)
+#define DBG_ERR_FMT(msg, fmt) Serial.print(F("ERR: ")); Serial.println(msg, fmt)
 #else
 #define DBG_ERR(msg)
 #define DBG_ERR_FMT(msg, fmt)
@@ -601,28 +601,42 @@ byte randomFuncAll() {
 
 byte randomFuncAlphaNum() {
   byte idx = 0;  // index
-  byte num = random(37);  // create a random number (0 ~ 36)
-  if (0 < num && num <= 0x0A) {
+  // create a random number (0 ~ 37)
+  // 0 and 37 is used to add space
+  byte num = random(38);  
+  DBG_MSG("randomFuncAlphaNum");
+  DBG_MSG(num);
+  if (0 < num && num <= 10) {
     // the index of '0' is 0x10. 
     // e.g. when num is 1, idx will be 0x10
     idx = num + 0x0F;  
-  } else if (num > 0x0A) {
+  } else if (10 < num && num <= 36) {
     // the index of 'A' is 0x21.
     // e.g. when num is 11, idx will be 0x21
     //      when num is 36, idx will be 0x3A
     idx = num + 0x16;  
+  } else {
+    // space here
+    idx = 0;
   }
   return idx;
 }
 
 byte randomFuncAlphaOnly() {
   byte idx = 0;  // index
-  byte num = random(27);  // create a random number (0 ~ 26)
-  if (num > 0) {
+  // create a random number (0 ~ 27)
+  // 0 and 27 is used to add space
+  byte num = random(28);
+  DBG_MSG("randomFuncAlphaOnly");
+  DBG_MSG(num);
+  if (0 < num && num <= 26) {
     // the index of 'A' is 0x21.
     // e.g. when num is 1, idx will be 0x21
     //      when num is 26, idx will be 0x3A
     idx = num + 0x20;  
+  } else {
+    // space here
+    idx = 0;
   }
   return idx;
 }
@@ -634,7 +648,6 @@ byte randomFuncAlphaOnly() {
 //******************************************************************************
 
 void IRQ ir0_handler() {
-  //  DBG_MSG(F("ir0_handler: Enter Interrupt"));
   if (g_irrecv.decode(&g_results)) {
     onKeyReceived(&g_results);
     g_irrecv.resume(); // Receive the next value
