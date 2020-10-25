@@ -1,6 +1,6 @@
 # MorseListening
 This is a project running on Arduino UNO/Nano.<br>
-This project is on development when I have time.<br>
+The first version (V0.1.0) of this project was released on Oct. 24, 2020<br>
 It's a Morse code listening practice device to play Morse code by a passive buzzer and controlled by a infrared remote controller.<br>
 
 The hardware is mainly constructed with the following parts:<br>
@@ -10,7 +10,7 @@ An IR Receiver 1838<br>
 A passive buzzer<br>
 An LED<br>
 A diode 1N4148<br>
-some resistors, etc.<br>
+Some resistors, etc.<br>
 
 Circuit diagram<br>
 ![circuit diagram](https://github.com/JJ1SLR/MorseListening/blob/master/Document/circuit.JPG?raw=true)<br>
