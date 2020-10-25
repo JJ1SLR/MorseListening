@@ -1,3 +1,24 @@
+/*
+ * This file is part of the MorseListening distribution.
+ * (https://github.com/JJ1SLR/MorseListening)
+ * Copyright (c) 2020 JJ1SLR.
+ * 
+ * This program is free software: you can redistribute it and/or modify  
+ * it under the terms of the GNU General Public License as published by  
+ * the Free Software Foundation, version 3.
+ *
+ * This program is distributed in the hope that it will be useful, but 
+ * WITHOUT ANY WARRANTY; without even the implied warranty of 
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License 
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ * 
+ * MorseListening: a Morse listening practice device.
+ * Version 0.1.1
+ *
+*/
 #include <LiquidCrystal.h>
 #include <IRremote.h>
 #include <setjmp.h>
@@ -88,9 +109,17 @@ volatile decode_results g_results;
 //******************************************************************************
 // offset
 #define MTABLE_CHAR_OFFSET  0x20
+// space charactor code
 #define M_SPACE             0x00
+// invalid charactor code
 #define M_INVLD             0x80
 // morse data table
+//  example of the item data structure (charactor 'Q') :
+//  =========================================================
+//  | B | 1    | 1    | 0   | 1    | 1          | 0 | 0 | 0 |
+//  |   | ^    | ^    | ^   | ^    | ^          |   |   |   |
+//  |   | dash | dash | dot | dash | terminator |   |   |   |
+//  =========================================================
 const byte mTable[] = {
   M_SPACE,      // 0x20, SPACE
   M_INVLD,      // 0x21, ! |
@@ -209,6 +238,8 @@ volatile bool g_bRunStatusChanged = false;
 //******************************************************************************
 // Basic functions
 //******************************************************************************
+// Delay milliseconds, non-blocking function.
+// It calls eventChecker() function in the delay loop.
 void delayWithChk(unsigned int mils) {
   unsigned long startMillis = millis();
   while (millis() - startMillis < mils) {
@@ -216,6 +247,8 @@ void delayWithChk(unsigned int mils) {
   }
 }
 
+// Play tone with given frequency and duration time.
+// It uses Arduino tone() function so the hardware time2 is used.
 void playTone(int freq, int dura) {
   digitalWrite(LED_PIN, HIGH);
   tone(BUZZER_PIN, freq, dura);
@@ -223,28 +256,35 @@ void playTone(int freq, int dura) {
   digitalWrite(LED_PIN, LOW);
 }
 
+// Play morse dot.
 void playDot() {
   playTone(g_frequency, g_duration);
   delayWithChk(g_duration);
 }
 
+// Play morse dash
 void playDash() {
   playTone(g_frequency, g_duration * 3);
   delayWithChk(g_duration);
 }
 
+// Play separator between dot/dash.
 void playSep() {
   delayWithChk(g_duration * 2);
 }
 
+// Play separator between words.
 void playWordSep() {
   delayWithChk(g_duration * 6);
 }
 
+// Get the bit value of the given byte data.
 bool getBit(byte dat, byte i) {
   return (bool)((0x01 << (7 - i)) & dat);
 }
 
+// Get the valid bit length of the data.
+// The data's bit structure is the same as an item of mTable.
 byte getLen(byte dat) {
   byte i;
   for (i = 7; i > 0; --i) {
@@ -261,9 +301,7 @@ byte getLen(byte dat) {
 //******************************************************************************
 // Module functions
 //******************************************************************************
-//*******************************
-// Play sound and display on lcd
-//*******************************
+// Play sound, and display on lcd if the disp parameter is true.
 bool playChar(char ch, bool disp) {
   //  Serial.println(ch);
   byte ic;  // index of mTable
@@ -273,6 +311,7 @@ bool playChar(char ch, bool disp) {
     DBG_ERR_FMT(ch, HEX);
     return false;
   }
+  // Caculate the index of mTable of the given charactor.
   ic = ch - MTABLE_CHAR_OFFSET;
 
   // space
@@ -287,6 +326,7 @@ bool playChar(char ch, bool disp) {
     return false;
   }
 
+  // get the length of the item
   byte len = getLen(mTable[ic]);
 
   // display char on g_lcd
@@ -316,14 +356,17 @@ bool playChar(char ch, bool disp) {
       playDot();
     }
   }
+  // play a separator
   playSep();
   return true;
 }
 
+// Play sound with no display. (overload)
 bool playChar(char ch) {
   return playChar(ch, false);
 }
 
+// Play callsign and display them on the LCD.
 void playCQCallSign() {
   g_lcd.cursor();
   g_lcd.blink();
@@ -340,6 +383,8 @@ void playCQCallSign() {
   }
 }
 
+// Play sequence and display them on the LCD,
+// with the same order in the Japanese law.
 void playSequence() {
   g_lcd.noCursor();
   g_lcd.noBlink();
@@ -404,6 +449,7 @@ void playSequence() {
   delayWithChk(g_seqDelay);
 }
 
+// Play "Ready." on the LCD.
 void playReady() {
   g_lcd.noCursor();
   g_lcd.noBlink();
@@ -411,7 +457,9 @@ void playReady() {
   g_lcd.setCursor(0, 0);
   g_lcd.print(F("Ready."));
 }
-
+// Play ramdomly and display them on the LCD.
+// It stops when the screen is full.
+// The random data is generated by the given function randomFunc.
 void playRandom(RandomFuncPtr randomFunc) {
   // Cread random seed
   randomSeed(analogRead(A0));
@@ -444,87 +492,101 @@ void playRandom(RandomFuncPtr randomFunc) {
 //*******************************
 // Remote key handling
 //*******************************
-
+// Increase frequency when the key PLUS is pressed.
 void IRQ onKeyPlus() {
   if (g_frequency < 2000) {
     g_frequency += 100;
   }
 }
 
+// Decrease frequency when the key MINUS is pressed.
 void IRQ onKeyMinus() {
   if (g_frequency > 500) {
     g_frequency -= 100;
   }
 }
 
+// Set frequency to default when the key EQ is pressed.
 void IRQ onKeyEq() {
   g_frequency = DEFAULT_FREQUENCY;
 }
 
-
+// Decrease duration when the key NEXT is pressed.
 void IRQ onKeyNext() {
   if (g_duration > 40) {
     g_duration -= 5;
   }
 }
 
+// Increase duration when the key PREV is pressed.
 void IRQ onKeyPrev() {
   if (g_duration < 120) {
     g_duration += 5;
   }
 }
 
+// Set duration to default when the key PLAY is pressed.
 void IRQ onKeyPlay() {
   g_duration = DEFAULT_DURATION;
 }
 
-
+// Decrease delay when the key CHPLUS is pressed.
 void IRQ onKeyChPlus() {
   if (g_seqDelay >= 100) {
     g_seqDelay -= 100;
   }
 }
 
+// Increase delay when the key CHMINUS is pressed.
 void IRQ onKeyChMinus() {
   if (g_seqDelay < 2000) {
     g_seqDelay += 100;
   }
 }
 
+// Set delay to default when the key CH is pressed.
 void IRQ onKeyCh() {
   g_seqDelay = DEFAULT_SEQ_DELAY;
 }
 
+// Change the mode to RS_READY when the key 0 is pressed.
 void IRQ onKey0() {
   g_runStatus = RS_READY;
   g_bRunStatusChanged = true;
 }
 
+// Change the mode to RS_SEQUENCE when the key 1 is pressed.
 void IRQ onKey1() {
   g_runStatus = RS_SEQUENCE;
   g_bRunStatusChanged = true;
 }
 
+// Change the mode to RS_RANDOM_ALL when the key 2 is pressed.
 void IRQ onKey2() {
   g_runStatus = RS_RANDOM_ALL;
   g_bRunStatusChanged = true;
 }
 
+// Change the mode to RS_RANDOM_ALPHA_NUM when the key 3 is pressed.
 void IRQ onKey3() {
   g_runStatus = RS_RANDOM_ALPHA_NUM;
   g_bRunStatusChanged = true;
 }
 
+// Change the mode to RS_RANDOM_ALPHA_ONLY when the key 4 is pressed.
 void IRQ onKey4() {
   g_runStatus = RS_RANDOM_ALPHA_ONLY;
   g_bRunStatusChanged = true;
 }
 
+// Change the mode to RS_CALLSIGN when the key 9 is pressed.
 void IRQ onKey9() {
   g_runStatus = RS_CALLSIGN;
   g_bRunStatusChanged = true;
 }
 
+// It will runs here when the remote control pressed.
+// Distribute it to the event function.
 void IRQ onKeyReceived(decode_results *results) {
   switch (results->value) {
     case KEY_PLUS:
@@ -577,8 +639,10 @@ void IRQ onKeyReceived(decode_results *results) {
       break;
 
     case KEY_LAST:
+      // do the same as the last pressed key
       break;
     default:
+      // invalid key
       keyFunc = NULL;
       break;
   }
@@ -587,6 +651,9 @@ void IRQ onKeyReceived(decode_results *results) {
   }
 }
 
+// This function is called by delayWithChk() function.
+// When run status changed, it will do a long jump to the
+// start of loop() function.
 void eventChecker() {
   if (g_bRunStatusChanged) {
     DBG_MSG("eventChecker: status changed");
@@ -595,10 +662,13 @@ void eventChecker() {
   }
 }
 
+// Random number creator to create a random index of mTable.
 byte randomFuncAll() {
   return random(ARY_LEN(mTable));  // create a random index
 }
 
+// Random number creator to create a number in the range of
+// alphabet or number. It may also create 0 for the space charactor.
 byte randomFuncAlphaNum() {
   byte idx = 0;  // index
   // create a random number (0 ~ 37)
@@ -622,6 +692,8 @@ byte randomFuncAlphaNum() {
   return idx;
 }
 
+// Random number creator to create a number in the range of
+// alphabet. It may also create 0 for the space charactor.
 byte randomFuncAlphaOnly() {
   byte idx = 0;  // index
   // create a random number (0 ~ 27)
@@ -646,7 +718,7 @@ byte randomFuncAlphaOnly() {
 //******************************************************************************
 // Public functions
 //******************************************************************************
-
+// IRQ0 handler.
 void IRQ ir0_handler() {
   if (g_irrecv.decode(&g_results)) {
     onKeyReceived(&g_results);
@@ -654,6 +726,7 @@ void IRQ ir0_handler() {
   }
 }
 
+// The setup() function of the Arduino framework.
 void setup() {
   // start serial output
   Serial.begin(9600);
@@ -674,6 +747,7 @@ void setup() {
   attachInterrupt(0, ir0_handler, CHANGE);
 }
 
+// The loop() function of the Arduino framework.
 void loop() {
   setjmp(g_jmpBuf);
   switch (g_runStatus) {
