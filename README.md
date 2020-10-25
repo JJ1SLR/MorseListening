@@ -1,5 +1,5 @@
 # MorseListening
-This is a project running on Ardoino UNO/Nano.<br>
+This is a project running on Arduino UNO/Nano.<br>
 This project is on development when I have time.<br>
 It's a Morse code listening practice device to play Morse code by a passive buzzer and controlled by a infrared remote controller.<br>
 
