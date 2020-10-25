@@ -71,8 +71,12 @@
   #define IR_USE_TIMER2     // tx = pin 3
 #endif
 
+// Add by JJ1SLR -START-
+// The timer2 is used by Anduino tone() function,
+// use timer1 instead.
 #undef IR_USE_TIMER2
 #define IR_USE_TIMER1
+// Add by JJ1SLR -END-
 
 #ifdef F_CPU
 #define SYSCLOCK F_CPU     // main Arduino clock
