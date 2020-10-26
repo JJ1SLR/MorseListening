@@ -2,6 +2,7 @@
 This is a project running on Arduino UNO/Nano.<br>
 The first version (V0.1.0) of this project was released on Oct. 24, 2020<br>
 It's a Morse code listening practice device to play Morse code by a passive buzzer and controlled by a infrared remote controller.<br>
+![Overview](https://github.com/JJ1SLR/MorseListening/blob/master/Document/images/overview.jpg?raw=true)<br>
 
 The hardware is mainly constructed with the following parts:<br>
 An Arduino UNO<br>
